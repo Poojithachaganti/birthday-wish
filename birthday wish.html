@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎂 Make a Wish</title>
+  <meta name="description" content="Blow out the candles with your microphone, then read a birthday letter." />
+  <style>
+    :root {
+      --bg1: #ffe4ec;
+      --bg2: #fff9d6;
+      --cake: #f7a8c0;
+      --icing: #fff;
+      --plate: #a0a0ff20;
+      --candle: #ffd166;
+      --wick: #333;
+      --flame1: #ffcc33;
+      --flame2: #ff7b00;
+      --text: #7a1665;
+      --shadow: 0 10px 30px rgba(0,0,0,.12);
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      display: grid; place-items: center;
+    }
+    .app { width: min(100%, 960px); padding: 24px; }
+    .card {
+      background: #fff; border-radius: 24px; box-shadow: var(--shadow); padding: 24px; text-align: center;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 48px); }
+    .sub { opacity: .7; margin-bottom: 16px; }
+
+    .stage { position: relative; height: 320px; display: grid; place-items: end center; }
+    .plate { width: 420px; height: 24px; background: var(--plate); border-radius: 999px; filter: blur(1px); }
+    .cake {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      width: 360px; height: 180px; background: var(--cake); border-radius: 24px 24px 12px 12px;
+      box-shadow: inset 0 10px 0 #fbb3c9;
+    }
+    .icing { position: absolute; top: -24px; left: 0; right: 0; height: 60px; background: var(--icing); border-radius: 24px 24px 0 0; }
+    .drip { position: absolute; width: 26px; height: 36px; background: var(--icing); border-radius: 0 0 14px 14px; }
+    .drip.d1 { left: 40px; top: 24px; height: 30px; }
+    .drip.d2 { left: 120px; top: 18px; height: 40px; }
+    .drip.d3 { left: 220px; top: 28px; height: 34px; }
+    .drip.d4 { left: 300px; top: 16px; height: 42px; }
+
+    .candles { position: absolute; top: -70px; left: 0; right: 0; display: flex; justify-content: center; gap: 28px; }
+    .candle { width: 12px; height: 48px; background: var(--candle); border-radius: 6px; position: relative; box-shadow: inset 0 -8px 0 rgba(255,255,255,.45); }
+    .wick { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 2px; height: 10px; background: var(--wick); border-radius: 2px; }
+    .flame { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; filter: blur(.3px); }
+    .teardrop { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 14px; height: 18px; background: radial-gradient(circle at 50% 35%, var(--flame1), var(--flame2) 70%); border-radius: 50% 50% 50% 50%/60% 60% 40% 40%; animation: flicker .18s infinite alternate; }
+    .glow { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: radial-gradient(circle, #ffdb6f55, #ffdb6f00 60%); border-radius: 50%; animation: glow .4s infinite alternate; }
+    @keyframes flicker { from { transform: translateX(-50%) scaleY(1); } to { transform: translateX(-52%) scaleY(1.1); } }
+    @keyframes glow { from { opacity: .6; } to { opacity: .9; } }
+    .out .flame { display: none; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; }
+    button {
+      appearance: none; border: 0; background: linear-gradient(180deg, #ff7ec3, #ff4fa1); color: #fff; padding: 12px 18px; border-radius: 999px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow);
+    }
+    button.secondary { background: #ececff; color: #4b3fb3; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .hint { font-size: 14px; opacity: .75; margin-top: 8px; }
+
+    .letter { display: none; margin-top: 16px; text-align: left; }
+    .letter.visible { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .letter img { width: 100%; height: auto; border-radius: 16px; box-shadow: var(--shadow); }
+    .letter .paper { background: #fff; border-radius: 16px; padding: 18px; box-shadow: var(--shadow); line-height: 1.6; }
+    .sig { margin-top: 12px; font-weight: 700; }
+
+    .toast { position: fixed; inset: auto 12px 12px 12px; background: #111; color: #fff; padding: 10px 14px; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity .2s; text-align: center; }
+    .toast.show { opacity: .92; }
+
+    /* Confetti */
+    canvas#confetti { position: fixed; inset: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="app">
+    <div class="card">
+      <h1 id="title">🎉 Happy Birthday Kannamma!</h1>
+      <div id="subtitle" class="sub">Make a wish, then blow into your mic to put out the candles.</div>
+
+      <div class="stage">
+        <div class="plate"></div>
+        <div id="cake" class="cake">
+          <div class="icing">
+            <div class="drip d1"></div>
+            <div class="drip d2"></div>
+            <div class="drip d3"></div>
+            <div class="drip d4"></div>
+          </div>
+          <div id="candles" class="candles">
+            <!-- 5 candles -->
+            <div class="candle"><div class="wick"></div><div class="flame"><div class="teardrop"></div><div class="glow"></div></div></div>
+            <div class="candle"><div class="wick"></div><div class="flame"><div class="teardrop"></div><div class="glow"></div></div></div>
+            <div class="candle"><div class="wick"></div><div class="flame"><div class="teardrop"></div><div class="glow"></div></div></div>
+            <div class="candle"><div class="wick"></div><div class="flame"><div class="teardrop"></div><div class="glow"></div></div></div>
+            <div class="candle"><div class="wick"></div><div class="flame"><div class="teardrop"></div><div class="glow"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn">Start microphone 🎤</button>
+        <button id="manualBtn" class="secondary">I can't use the mic</button>
+        <button id="nextBtn" class="secondary" style="display:none">Next ➡️</button>
+      </div>
+      <div id="hint" class="hint">Tip: Hold your device close and blow steadily for ~1–2 seconds.</div>
+
+      <section id="letter" class="letter" aria-live="polite">
+        <img id="photo" alt="Birthday photo" />
+        <div class="paper">
+          <h2 id="greeting">To my boyyy,</h2>
+          <p id="message">Happy Birthday, Nanna ❤  
+      You mean the world to me, and I’m so grateful to have you in my life.  
+      No matter how many birthdays pass, I’ll always celebrate you with all my love.  
+      and know that my heart is always with you.
+      Nannu baristhunnandhuku ,nannu love chesthunnandhuku Thank you...
+      Thank you for making me happy and complete 💖  
+      I love you to the moon and back nannalu..
+You are my Baby💋
+      once again Happy Birthday 🎂✨</p>
+          <div id="signature" class="sig">— With love</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // ===== URL Customization =====
+    // You can customize via query params, e.g.:
+    // ?name=Sara&from=Arjun&title=Happy%20Birthday%20Sara!&message=...&image=https://...jpg
+    (function applyParams(){
+      const p = new URLSearchParams(location.search);
+      const title = p.get('title');
+      const name = p.get('name');
+      const from = p.get('from');
+      const msg = p.get('message');
+      const img = p.get('image');
+      if (title) document.getElementById('title').textContent = title;
+      if (name) document.getElementById('greeting').textContent = `Dear ${name},`;
+      if (from) document.getElementById('signature').textContent = `— With love, ${from}`;
+      if (msg) document.getElementById('message').textContent = msg;
+      if (img) document.getElementById('photo').src = img;
+    })();
+
+    // ===== Microphone Blow Detection =====
+    let audioCtx, analyser, stream, raf;
+    const startBtn = document.getElementById('startBtn');
+    const manualBtn = document.getElementById('manualBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const candles = document.getElementById('candles');
+    const letter = document.getElementById('letter');
+    const hint = document.getElementById('hint');
+    const toast = document.getElementById('toast');
+
+    function showToast(text, ms=1800){
+      toast.textContent = text; toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'), ms);
+    }
+
+    async function startMic(){
+      try {
+        startBtn.disabled = true;
+        showToast('Microphone on. Blow steadily to put out the candles!');
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        const source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        listen();
+      } catch (e) {
+        console.error(e);
+        showToast('Could not access microphone. Use the manual button.');
+        startBtn.disabled = false;
+      }
+    }
+
+    function rmsFromTimeDomain(data){
+      // data is Uint8Array centered at 128
+      let sum = 0;
+      for (let i=0; i<data.length; i++){
+        const v = data[i] - 128;
+        sum += v*v;
+      }
+      return Math.sqrt(sum / data.length) / 128; // normalized 0..~1
+    }
+
+    let overThresholdMs = 0;
+    function listen(){
+      const buf = new Uint8Array(analyser.fftSize);
+      const THRESHOLD = 0.22; // adjust if needed
+      const REQUIRED_MS = 500; // need sustained blow for 0.5s
+      let last = performance.now();
+
+      function loop(){
+        analyser.getByteTimeDomainData(buf);
+        const rms = rmsFromTimeDomain(buf);
+        const now = performance.now();
+        const dt = now - last; last = now;
+        if (rms > THRESHOLD){
+          overThresholdMs += dt;
+        } else {
+          overThresholdMs = Math.max(0, overThresholdMs - dt*0.6); // decay
+        }
+        if (overThresholdMs >= REQUIRED_MS){
+          blowOut();
+          return;
+        }
+        raf = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    function stopMic(){
+      if (raf) cancelAnimationFrame(raf);
+      if (stream){ stream.getTracks().forEach(t=>t.stop()); }
+      if (audioCtx){ audioCtx.close(); }
+      raf = null; stream = null; audioCtx = null; analyser = null;
+    }
+
+    function blowOut(){
+      stopMic();
+      candles.classList.add('out');
+      nextBtn.style.display = 'inline-block';
+      hint.textContent = 'Candles are out! Click Next to open your letter.';
+      confettiBurst();
+      showToast('🎉 You did it! Happy Birthday!');
+    }
+
+    startBtn.addEventListener('click', startMic);
+    manualBtn.addEventListener('click', blowOut);
+    nextBtn.addEventListener('click', ()=>{
+      letter.classList.add('visible');
+      document.getElementById('photo').style.display = document.getElementById('photo').src ? 'block' : 'none';
+      nextBtn.style.display = 'none';
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // ===== Simple Confetti =====
+    const c = document.getElementById('confetti');
+    const ctx = c.getContext('2d');
+    const pieces = [];
+    function resize(){ c.width = innerWidth; c.height = innerHeight; }
+    addEventListener('resize', resize); resize();
+    function confettiBurst(){
+      pieces.length = 0;
+      for (let i=0;i<160;i++){
+        pieces.push({
+          x: c.width/2, y: c.height/3, r: 2 + Math.random()*4,
+          vx: (Math.random()-0.5)*6, vy: - (2+Math.random()*4),
+          ay: 0.08 + Math.random()*0.04, life: 120 + Math.random()*60
+        });
+      }
+      animateConfetti();
+    }
+    function animateConfetti(){
+      let alive = false;
+      ctx.clearRect(0,0,c.width,c.height);
+      for (const p of pieces){
+        if (p.life > 0){ alive = true; p.life--; p.vy += p.ay; p.x += p.vx; p.y += p.vy; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); }
+      }
+      if (alive) requestAnimationFrame(animateConfetti);
+    }
+
+    // iOS/permissions note
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost'){
+      document.getElementById('hint').textContent = 'Note: Microphone requires HTTPS hosting (or localhost).';
+    }
+  </script>
+</body>
+</html>
